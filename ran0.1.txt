@@ -1,0 +1,191 @@
+#include<bits/stdc++.h>
+#include<SDL.h>
+#include <iostream>
+#include <vector>
+#include <ctime>
+#include <SDL.h>
+
+using namespace std;
+
+const int r = 10;
+const int step = 15;
+const int width = 800;
+const int height = 600;
+
+struct Circle {
+    int x, y;
+};
+
+SDL_Window* window = NULL;
+SDL_Renderer* renderer = NULL;
+
+vector<Circle> snake;
+Circle ball;
+
+void drawCircle(int x, int y) {
+    for (int i = 0; i <= r * 2; ++i) {
+        for (int j = 0; j <= r * 2; ++j) {
+            int dx = r - i;
+            int dy = r - j;
+            if (dx * dx + dy * dy <= r * r) {
+                SDL_RenderDrawPoint(renderer, x + dx, y + dy);
+            }
+        }
+    }
+}
+
+void draw(int x, int y) {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    int sz = snake.size();
+    for (int i = 0; i < sz; ++i) {
+        drawCircle(snake[i].x, snake[i].y);
+    }
+
+    drawCircle(ball.x, ball.y);
+
+    SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+    drawCircle(x, y);
+
+    SDL_RenderPresent(renderer);
+}
+
+void placeBall() {
+    srand(time(0));
+    ball.x = rand() % (width - 2 * r) + r;
+    ball.y = rand() % (height - 2 * r) + r;
+
+    for (Circle c : snake) {
+        if ((ball.x >= c.x - r && ball.x <= c.x + r) && (ball.y >= c.y - r && ball.y <= c.y + r)) {
+            placeBall();
+            return;
+        }
+    }
+}
+
+bool valid(char kitu)
+{
+    bool check = true;
+    if (kitu == 'r' && snake[0].x < snake[1].x && snake[0].y == snake[1].y) check = false;
+    else if (kitu == 'l' && snake[0].x > snake[1].x && snake[0].y == snake[1].y) check = false;
+    else if (kitu == 'u' && snake[0].x == snake[1].x && snake[0].y > snake[1].y) check = false;
+    else if (kitu == 'd' && snake[0].x == snake[1].x && snake[0].y < snake[1].y) check = false;
+    return check;
+}
+
+bool testWallCollision() {
+    int m = snake[0].x;
+    int n = snake[0].y;
+    if (m < r || m > width - r) return false;
+    if (n < r || n > height - r) return false;
+    return true;
+}
+
+bool testSelfCollision() {
+    int sz = snake.size();
+    for (int i = 2; i < sz; ++i) {
+        if (snake[0].x == snake[i].x && snake[0].y == snake[i].y) {
+            return false;
+        }
+    }
+    return true;
+}
+
+int main(int argc, char* argv[]) {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        cout << "Khong mo duoc SDL: " << SDL_GetError() << endl;
+        return 1;
+    }
+    window = SDL_CreateWindow("Rắn săn mồi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_SHOWN);
+    if (window == NULL) {
+        cout << "Khong mo duoc cua so: " << SDL_GetError() << endl;
+        SDL_Quit();
+        return 1;
+    }
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (renderer == NULL) {
+        cout << "Khong tao duoc but ve: " << SDL_GetError() << endl;
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+    Circle head = { 50, height / 2 };
+    snake.push_back(head);
+    snake.push_back({ 30, height / 2 });
+    snake.push_back({ 10, height / 2 });
+
+    placeBall();
+    draw(head.x, head.y);
+
+    SDL_Event e;
+    bool quit = false;
+    char direction = 'r';
+
+    while (!quit) {
+        while (SDL_PollEvent(&e) != 0) {
+            if (e.type == SDL_QUIT) {
+                quit = true;
+            }
+            if (e.type == SDL_KEYDOWN) {
+                switch (e.key.keysym.sym) {
+                case SDLK_LEFT:
+                    if (direction != 'r') direction = 'l';
+                    break;
+                case SDLK_RIGHT:
+                    if (direction != 'l') direction = 'r';
+                    break;
+                case SDLK_UP:
+                    if (direction != 'd') direction = 'u';
+                    break;
+                case SDLK_DOWN:
+                    if (direction != 'u') direction = 'd';
+                    break;
+                }
+            }
+        }
+        bool validDirection = valid(direction);
+        bool wallCollision = testWallCollision();
+        bool selfCollision = testSelfCollision();
+        if (!validDirection || !wallCollision || !selfCollision) {
+            cout << "Game over!\n";
+            break;
+        }
+        if ((snake.front().x >= ball.x - 18 && snake.front().x <= ball.x + 18) && (snake.front().y >= ball.y - 18 && snake.front().y <= ball.y + 18)) {
+            snake.push_back(ball);
+            placeBall();
+            cout << "2 ";
+        }
+
+        int stepX = 0, stepY = 0;
+        switch (direction) {
+        case 'r':
+            stepX = step;
+            break;
+        case 'l':
+            stepX = -step;
+            break;
+        case 'u':
+            stepY = -step;
+            break;
+        case 'd':
+            stepY = step;
+            break;
+        }
+
+        for (int i = snake.size() - 1; i >= 1; i--) {
+            snake[i].x = snake[i - 1].x;
+            snake[i].y = snake[i - 1].y;
+        }
+
+        snake[0].x += stepX;
+        snake[0].y += stepY;
+
+        draw(snake[0].x, snake[0].y);
+        SDL_Delay(100);
+    }
+
+    return 0;
+}

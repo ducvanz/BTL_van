@@ -1,0 +1,83 @@
+#include <iostream>
+#include <SDL.h>
+
+using namespace std;
+
+void drawCircle(SDL_Renderer* renderer, int centerX, int centerY, int radius) {
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    for (int x = centerX - radius; x <= centerX + radius; x++) {
+        for (int y = centerY - radius; y <= centerY + radius; y++) {
+            int dx = x - centerX;
+            int dy = y - centerY;
+            if (dx * dx + dy * dy <= radius * radius) {
+                SDL_RenderDrawPoint(renderer, x, y);
+            }
+        }
+    }
+}
+
+const int screenWidth = 800;
+const int screenHeight = 600;
+
+int main(int argc, char* argv[]) {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        cout << "Không thể khởi tạo SDL: " << SDL_GetError() << endl;
+        return 1;
+    }
+
+    SDL_Window* window = SDL_CreateWindow("Vẽ hình tròn", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, SDL_WINDOW_SHOWN);
+    if (window == nullptr) {
+        cout << "Không thể tạo cửa sổ: " << SDL_GetError() << endl;
+        return 1;
+    }
+
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (renderer == nullptr) {
+        cout << "Không thể tạo renderer: " << SDL_GetError() << endl;
+        return 1;
+    }
+
+    int circleRadius = 10;
+    int circleX = screenWidth / 2;
+    int circleY = screenHeight / 2;
+
+    // Vẽ hình tròn ban đầu
+    drawCircle(renderer, circleX, circleY, circleRadius);
+    SDL_RenderPresent(renderer);
+
+    // Xử lý sự kiện
+    bool quit = false;
+    SDL_Event e;
+    while (!quit) {
+        while (SDL_PollEvent(&e) != 0) {
+            if (e.type == SDL_QUIT) {
+                quit = true;
+            }
+            else if (e.type == SDL_KEYDOWN) {
+                switch (e.key.keysym.sym) {
+                case SDLK_LEFT:
+                    circleX -= 10;
+                    break;
+                case SDLK_UP:
+                    circleY -= 10;
+                    break;
+                case SDLK_RIGHT:
+                    circleX += 10;
+                    break;
+                case SDLK_DOWN:
+                    circleY += 10;
+                    break;
+                }
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Xóa màn hình với màu đen trước khi vẽ lại hình tròn
+                SDL_RenderClear(renderer);
+                drawCircle(renderer, circleX, circleY, circleRadius);
+                SDL_RenderPresent(renderer); // Hiển thị màn hình đã vẽ
+            }
+        }
+    }
+
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    return 0;
+}
